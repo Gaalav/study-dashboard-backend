@@ -1,0 +1,9 @@
+# Nixpacks configuration
+[phases.build]
+cmds = ["python manage.py collectstatic --noinput"]
+
+[phases.setup]
+nixPkgs = ["python311", "postgresql"]
+
+[start]
+cmd = "python manage.py migrate && gunicorn studydashboard.wsgi"
