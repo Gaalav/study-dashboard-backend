@@ -1,6 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
 from django.utils import timezone
 from datetime import datetime, timedelta
 
@@ -14,6 +16,61 @@ from .serializers import (
     AssignmentSerializer, WeeklyGoalSerializer, StudyActivitySerializer,
     SubjectPerformanceSerializer, ExamSerializer
 )
+
+
+# Authentication Views
+@api_view(['POST'])
+def login_view(request):
+    """Login endpoint that returns a token"""
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    if not username or not password:
+        return Response({'error': 'Username and password required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = authenticate(username=username, password=password)
+    
+    if user:
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'username': user.username,
+            'message': 'Login successful'
+        })
+    
+    return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['POST'])
+def verify_token(request):
+    """Verify if the token is valid"""
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    
+    if auth_header.startswith('Token '):
+        token_key = auth_header.split(' ')[1]
+        try:
+            token = Token.objects.get(key=token_key)
+            return Response({'valid': True, 'username': token.user.username})
+        except Token.DoesNotExist:
+            pass
+    
+    return Response({'valid': False}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['POST'])
+def logout_view(request):
+    """Logout endpoint that deletes the token"""
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    
+    if auth_header.startswith('Token '):
+        token_key = auth_header.split(' ')[1]
+        try:
+            token = Token.objects.get(key=token_key)
+            token.delete()
+        except Token.DoesNotExist:
+            pass
+    
+    return Response({'message': 'Logged out successfully'})
 
 
 class ScheduleItemViewSet(viewsets.ModelViewSet):

@@ -15,4 +15,8 @@ router.register(r'exams', views.ExamViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('dashboard/', views.dashboard_overview, name='dashboard-overview'),
+    # Auth endpoints
+    path('auth/login/', views.login_view, name='auth-login'),
+    path('auth/verify/', views.verify_token, name='auth-verify'),
+    path('auth/logout/', views.logout_view, name='auth-logout'),
 ]
