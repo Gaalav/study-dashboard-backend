@@ -3,6 +3,11 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 
+def get_user_display(user):
+    """Helper to safely get username"""
+    return user.username if user else 'Anonymous'
+
+
 class ScheduleItem(models.Model):
     """Model for daily schedule items/classes"""
     STATUS_CHOICES = [
@@ -24,7 +29,7 @@ class ScheduleItem(models.Model):
         ordering = ['date', 'start_time']
 
     def __str__(self):
-        return f"{self.user.username}: {self.subject} ({self.start_time} - {self.end_time})"
+        return f"{get_user_display(self.user)}: {self.subject} ({self.start_time} - {self.end_time})"
 
 
 class Quiz(models.Model):
@@ -43,7 +48,7 @@ class Quiz(models.Model):
         ordering = ['quiz_date']
 
     def __str__(self):
-        return f"{self.user.username}: {self.title} - {self.subject}"
+        return f"{get_user_display(self.user)}: {self.title} - {self.subject}"
 
     @property
     def days_until(self):
@@ -81,7 +86,7 @@ class QuizAttempt(models.Model):
     completed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - Attempt on {self.quiz.title}: {self.score}/{self.total_questions}"
+        return f"{get_user_display(self.user)} - Attempt on {self.quiz.title}: {self.score}/{self.total_questions}"
 
     @property
     def percentage(self):
@@ -112,7 +117,7 @@ class Assignment(models.Model):
         ordering = ['due_date']
 
     def __str__(self):
-        return f"{self.user.username}: {self.title} - {self.subject}"
+        return f"{get_user_display(self.user)}: {self.title} - {self.subject}"
 
 
 class WeeklyGoal(models.Model):
@@ -134,7 +139,7 @@ class WeeklyGoal(models.Model):
         ordering = ['-week_start', 'status']
 
     def __str__(self):
-        return f"{self.user.username}: {self.text[:50]}... ({self.status})"
+        return f"{get_user_display(self.user)}: {self.text[:50]}... ({self.status})"
 
 
 class StudyActivity(models.Model):
@@ -149,7 +154,7 @@ class StudyActivity(models.Model):
         ordering = ['-activity_time']
 
     def __str__(self):
-        return f"{self.user.username}: {self.text[:50]}..."
+        return f"{get_user_display(self.user)}: {self.text[:50]}..."
 
 
 class SubjectPerformance(models.Model):
@@ -165,7 +170,7 @@ class SubjectPerformance(models.Model):
         unique_together = ['user', 'subject']
 
     def __str__(self):
-        return f"{self.user.username}: {self.subject}: {self.grade} ({self.percentage}%)"
+        return f"{get_user_display(self.user)}: {self.subject}: {self.grade} ({self.percentage}%)"
 
 
 class Exam(models.Model):
@@ -180,7 +185,7 @@ class Exam(models.Model):
         ordering = ['exam_date']
 
     def __str__(self):
-        return f"{self.user.username}: {self.title} - {self.subject}"
+        return f"{get_user_display(self.user)}: {self.title} - {self.subject}"
 
     @property
     def days_until(self):
