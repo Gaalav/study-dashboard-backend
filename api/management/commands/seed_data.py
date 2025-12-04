@@ -8,15 +8,19 @@ from api.models import (
 
 
 class Command(BaseCommand):
-    help = 'Seeds the database with sample data'
+    help = 'Seeds the database with sample data (only if empty)'
 
     def handle(self, *args, **options):
-        self.stdout.write('Seeding database...')
+        # Check if data already exists - if so, skip seeding
+        if ScheduleItem.objects.exists() or Quiz.objects.exists():
+            self.stdout.write(self.style.SUCCESS('Database already has data. Skipping seed.'))
+            return
+        
+        self.stdout.write('Seeding database with initial data...')
         
         today = timezone.now().date()
         
         # Create Schedule Items for today
-        ScheduleItem.objects.all().delete()
         schedule_data = [
             {'start_time': '09:00', 'end_time': '10:30', 'subject': 'Mathematics - Calculus II', 'status': 'upcoming'},
             {'start_time': '11:00', 'end_time': '12:30', 'subject': 'Computer Science - Data Structures', 'status': 'upcoming'},
@@ -27,7 +31,6 @@ class Command(BaseCommand):
         self.stdout.write(f'  Created {len(schedule_data)} schedule items')
         
         # Create Quiz with Questions
-        Quiz.objects.all().delete()
         quiz = Quiz.objects.create(
             title='Mathematics Quiz',
             subject='Mathematics',
