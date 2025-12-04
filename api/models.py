@@ -11,7 +11,7 @@ class ScheduleItem(models.Model):
         ('completed', 'Completed'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='schedule_items')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='schedule_items', null=True, blank=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
     subject = models.CharField(max_length=200)
@@ -29,7 +29,7 @@ class ScheduleItem(models.Model):
 
 class Quiz(models.Model):
     """Model for upcoming quizzes"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quizzes')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quizzes', null=True, blank=True)
     title = models.CharField(max_length=200)
     subject = models.CharField(max_length=100)
     topic = models.CharField(max_length=200)
@@ -73,7 +73,7 @@ class QuizQuestion(models.Model):
 
 class QuizAttempt(models.Model):
     """Model to track quiz attempts and scores"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts', null=True, blank=True)
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
     score = models.IntegerField()
     total_questions = models.IntegerField()
@@ -98,7 +98,7 @@ class Assignment(models.Model):
         ('completed', 'Completed'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assignments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assignments', null=True, blank=True)
     title = models.CharField(max_length=200)
     subject = models.CharField(max_length=100)
     due_date = models.DateField()
@@ -123,7 +123,7 @@ class WeeklyGoal(models.Model):
         ('completed', 'Completed'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='weekly_goals')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='weekly_goals', null=True, blank=True)
     text = models.CharField(max_length=300)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     week_start = models.DateField()
@@ -139,7 +139,7 @@ class WeeklyGoal(models.Model):
 
 class StudyActivity(models.Model):
     """Model for tracking study activities"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='study_activities')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='study_activities', null=True, blank=True)
     text = models.CharField(max_length=300)
     activity_time = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -154,7 +154,7 @@ class StudyActivity(models.Model):
 
 class SubjectPerformance(models.Model):
     """Model for tracking subject performance"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_performances')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_performances', null=True, blank=True)
     subject = models.CharField(max_length=100)
     grade = models.CharField(max_length=5)
     percentage = models.IntegerField()
@@ -170,7 +170,7 @@ class SubjectPerformance(models.Model):
 
 class Exam(models.Model):
     """Model for upcoming exams"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exams')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)
     title = models.CharField(max_length=200)
     subject = models.CharField(max_length=100)
     exam_date = models.DateField()
