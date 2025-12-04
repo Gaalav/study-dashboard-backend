@@ -6,37 +6,26 @@ from .models import (
 
 
 class ScheduleItemSerializer(serializers.ModelSerializer):
-    # Accept both snake_case and camelCase
-    startTime = serializers.TimeField(source='start_time', required=False)
-    endTime = serializers.TimeField(source='end_time', required=False)
-    
     class Meta:
         model = ScheduleItem
-        fields = ['id', 'start_time', 'end_time', 'startTime', 'endTime', 'subject', 'status', 'date']
-        extra_kwargs = {
-            'start_time': {'required': False},
-            'end_time': {'required': False},
-        }
+        fields = ['id', 'start_time', 'end_time', 'subject', 'status', 'date']
     
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Format times for frontend compatibility (camelCase)
-        data['startTime'] = str(data.get('start_time', ''))[:5] if data.get('start_time') else ''
-        data['endTime'] = str(data.get('end_time', ''))[:5] if data.get('end_time') else ''
-        # Remove snake_case versions
-        data.pop('start_time', None)
-        data.pop('end_time', None)
+        # Convert to camelCase for frontend
+        data['startTime'] = str(data.pop('start_time', ''))[:5]
+        data['endTime'] = str(data.pop('end_time', ''))[:5]
         return data
     
     def to_internal_value(self, data):
-        # Create a mutable copy
-        mutable_data = dict(data)
-        # Handle camelCase from frontend
-        if 'startTime' in mutable_data and 'start_time' not in mutable_data:
-            mutable_data['start_time'] = mutable_data.get('startTime')
-        if 'endTime' in mutable_data and 'end_time' not in mutable_data:
-            mutable_data['end_time'] = mutable_data.get('endTime')
-        return super().to_internal_value(mutable_data)
+        # Convert camelCase to snake_case
+        internal = {}
+        internal['start_time'] = data.get('startTime') or data.get('start_time')
+        internal['end_time'] = data.get('endTime') or data.get('end_time')
+        internal['subject'] = data.get('subject')
+        internal['status'] = data.get('status', 'upcoming')
+        internal['date'] = data.get('date')
+        return super().to_internal_value(internal)
 
 
 class QuizQuestionSerializer(serializers.ModelSerializer):
@@ -84,28 +73,26 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
-    dueDate = serializers.DateField(source='due_date', required=False)
-    
     class Meta:
         model = Assignment
-        fields = ['id', 'title', 'subject', 'dueDate', 'due_date', 'status', 'description', 'link']
-        extra_kwargs = {
-            'due_date': {'required': False},
-        }
+        fields = ['id', 'title', 'subject', 'due_date', 'status', 'description', 'link']
     
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Ensure camelCase for frontend
-        if 'due_date' in data:
-            data['dueDate'] = data.pop('due_date')
+        # Convert to camelCase for frontend
+        data['dueDate'] = data.pop('due_date')
         return data
     
     def to_internal_value(self, data):
-        mutable_data = dict(data)
-        # Handle camelCase from frontend
-        if 'dueDate' in mutable_data and 'due_date' not in mutable_data:
-            mutable_data['due_date'] = mutable_data.get('dueDate')
-        return super().to_internal_value(mutable_data)
+        # Convert camelCase to snake_case
+        internal = {}
+        internal['title'] = data.get('title')
+        internal['subject'] = data.get('subject')
+        internal['due_date'] = data.get('dueDate') or data.get('due_date')
+        internal['status'] = data.get('status', 'pending')
+        internal['description'] = data.get('description', '')
+        internal['link'] = data.get('link', '')
+        return super().to_internal_value(internal)
 
 
 class WeeklyGoalSerializer(serializers.ModelSerializer):
