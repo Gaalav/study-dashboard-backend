@@ -6,24 +6,37 @@ from .models import (
 
 
 class ScheduleItemSerializer(serializers.ModelSerializer):
+    # Accept both snake_case and camelCase
+    startTime = serializers.TimeField(source='start_time', required=False)
+    endTime = serializers.TimeField(source='end_time', required=False)
+    
     class Meta:
         model = ScheduleItem
-        fields = ['id', 'start_time', 'end_time', 'subject', 'status', 'date']
+        fields = ['id', 'start_time', 'end_time', 'startTime', 'endTime', 'subject', 'status', 'date']
+        extra_kwargs = {
+            'start_time': {'required': False},
+            'end_time': {'required': False},
+        }
     
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Format times for frontend compatibility
-        data['startTime'] = data.pop('start_time')
-        data['endTime'] = data.pop('end_time')
+        # Format times for frontend compatibility (camelCase)
+        data['startTime'] = str(data.get('start_time', ''))[:5] if data.get('start_time') else ''
+        data['endTime'] = str(data.get('end_time', ''))[:5] if data.get('end_time') else ''
+        # Remove snake_case versions
+        data.pop('start_time', None)
+        data.pop('end_time', None)
         return data
     
     def to_internal_value(self, data):
+        # Create a mutable copy
+        mutable_data = dict(data)
         # Handle camelCase from frontend
-        if 'startTime' in data:
-            data['start_time'] = data.pop('startTime')
-        if 'endTime' in data:
-            data['end_time'] = data.pop('endTime')
-        return super().to_internal_value(data)
+        if 'startTime' in mutable_data and 'start_time' not in mutable_data:
+            mutable_data['start_time'] = mutable_data.get('startTime')
+        if 'endTime' in mutable_data and 'end_time' not in mutable_data:
+            mutable_data['end_time'] = mutable_data.get('endTime')
+        return super().to_internal_value(mutable_data)
 
 
 class QuizQuestionSerializer(serializers.ModelSerializer):
@@ -71,11 +84,28 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
-    dueDate = serializers.DateField(source='due_date')
+    dueDate = serializers.DateField(source='due_date', required=False)
     
     class Meta:
         model = Assignment
-        fields = ['id', 'title', 'subject', 'dueDate', 'status', 'description', 'link']
+        fields = ['id', 'title', 'subject', 'dueDate', 'due_date', 'status', 'description', 'link']
+        extra_kwargs = {
+            'due_date': {'required': False},
+        }
+    
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Ensure camelCase for frontend
+        if 'due_date' in data:
+            data['dueDate'] = data.pop('due_date')
+        return data
+    
+    def to_internal_value(self, data):
+        mutable_data = dict(data)
+        # Handle camelCase from frontend
+        if 'dueDate' in mutable_data and 'due_date' not in mutable_data:
+            mutable_data['due_date'] = mutable_data.get('dueDate')
+        return super().to_internal_value(mutable_data)
 
 
 class WeeklyGoalSerializer(serializers.ModelSerializer):
