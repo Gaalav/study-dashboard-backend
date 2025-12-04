@@ -103,24 +103,17 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings - Allow React frontend
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL', 'False').lower() in ('true', '1', 'yes')
-
-if not CORS_ALLOW_ALL_ORIGINS:
-    CORS_ALLOWED_ORIGINS = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ]
-    # Add frontend URL from environment
-    FRONTEND_URL = os.environ.get('FRONTEND_URL')
-    if FRONTEND_URL:
-        CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for now
 
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF trusted origins for production
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if os.environ.get('CSRF_TRUSTED_ORIGINS') else []
+CSRF_TRUSTED_ORIGINS = [
+    'https://web-production-5620fa.up.railway.app',
+    'https://*.vercel.app',
+]
+if os.environ.get('CSRF_TRUSTED_ORIGINS'):
+    CSRF_TRUSTED_ORIGINS.extend(os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(','))
 
 # REST Framework settings
 REST_FRAMEWORK = {
