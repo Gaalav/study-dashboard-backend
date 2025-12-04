@@ -73,6 +73,9 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
+    # Explicitly declare fields to control validation
+    link = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    
     class Meta:
         model = Assignment
         fields = ['id', 'title', 'subject', 'due_date', 'status', 'description', 'link']
