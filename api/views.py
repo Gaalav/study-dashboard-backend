@@ -93,27 +93,28 @@ def logout_view(request):
 class UserFilteredViewSet(viewsets.ModelViewSet):
     """Base ViewSet that filters by authenticated user"""
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # Allow any - we'll handle user filtering manually
     
     def get_queryset(self):
-        """Filter queryset to only show user's data"""
+        """Filter queryset to only show user's data if authenticated"""
         queryset = super().get_queryset()
-        # Filter by user if user field exists and user is authenticated
-        try:
-            if self.request.user.is_authenticated:
-                # Try to filter by user, but handle if column doesn't exist
+        # Filter by user if authenticated
+        if self.request.user and self.request.user.is_authenticated:
+            try:
                 return queryset.filter(user=self.request.user)
-        except Exception:
-            pass
+            except Exception as e:
+                print(f"Error filtering by user: {e}")
         return queryset
     
     def perform_create(self, serializer):
-        """Set user when creating new objects"""
-        try:
-            serializer.save(user=self.request.user)
-        except Exception:
-            # If user field doesn't exist, save without it
-            serializer.save()
+        """Set user when creating new objects if authenticated"""
+        if self.request.user and self.request.user.is_authenticated:
+            try:
+                serializer.save(user=self.request.user)
+                return
+            except Exception as e:
+                print(f"Error saving with user: {e}")
+        serializer.save()
 
 
 class ScheduleItemViewSet(UserFilteredViewSet):
