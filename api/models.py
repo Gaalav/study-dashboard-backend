@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 from django.utils import timezone
 
 
@@ -10,6 +11,7 @@ class ScheduleItem(models.Model):
         ('completed', 'Completed'),
     ]
     
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='schedule_items')
     start_time = models.TimeField()
     end_time = models.TimeField()
     subject = models.CharField(max_length=200)
@@ -22,11 +24,12 @@ class ScheduleItem(models.Model):
         ordering = ['date', 'start_time']
 
     def __str__(self):
-        return f"{self.subject} ({self.start_time} - {self.end_time})"
+        return f"{self.user.username}: {self.subject} ({self.start_time} - {self.end_time})"
 
 
 class Quiz(models.Model):
     """Model for upcoming quizzes"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quizzes')
     title = models.CharField(max_length=200)
     subject = models.CharField(max_length=100)
     topic = models.CharField(max_length=200)
@@ -40,7 +43,7 @@ class Quiz(models.Model):
         ordering = ['quiz_date']
 
     def __str__(self):
-        return f"{self.title} - {self.subject}"
+        return f"{self.user.username}: {self.title} - {self.subject}"
 
     @property
     def days_until(self):
@@ -70,6 +73,7 @@ class QuizQuestion(models.Model):
 
 class QuizAttempt(models.Model):
     """Model to track quiz attempts and scores"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts')
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
     score = models.IntegerField()
     total_questions = models.IntegerField()
@@ -77,7 +81,7 @@ class QuizAttempt(models.Model):
     completed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Attempt on {self.quiz.title}: {self.score}/{self.total_questions}"
+        return f"{self.user.username} - Attempt on {self.quiz.title}: {self.score}/{self.total_questions}"
 
     @property
     def percentage(self):
@@ -94,6 +98,7 @@ class Assignment(models.Model):
         ('completed', 'Completed'),
     ]
     
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assignments')
     title = models.CharField(max_length=200)
     subject = models.CharField(max_length=100)
     due_date = models.DateField()
@@ -107,7 +112,7 @@ class Assignment(models.Model):
         ordering = ['due_date']
 
     def __str__(self):
-        return f"{self.title} - {self.subject}"
+        return f"{self.user.username}: {self.title} - {self.subject}"
 
 
 class WeeklyGoal(models.Model):
@@ -118,6 +123,7 @@ class WeeklyGoal(models.Model):
         ('completed', 'Completed'),
     ]
     
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='weekly_goals')
     text = models.CharField(max_length=300)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     week_start = models.DateField()
@@ -128,11 +134,12 @@ class WeeklyGoal(models.Model):
         ordering = ['-week_start', 'status']
 
     def __str__(self):
-        return f"{self.text[:50]}... ({self.status})"
+        return f"{self.user.username}: {self.text[:50]}... ({self.status})"
 
 
 class StudyActivity(models.Model):
     """Model for tracking study activities"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='study_activities')
     text = models.CharField(max_length=300)
     activity_time = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -142,25 +149,28 @@ class StudyActivity(models.Model):
         ordering = ['-activity_time']
 
     def __str__(self):
-        return f"{self.text[:50]}..."
+        return f"{self.user.username}: {self.text[:50]}..."
 
 
 class SubjectPerformance(models.Model):
     """Model for tracking subject performance"""
-    subject = models.CharField(max_length=100, unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_performances')
+    subject = models.CharField(max_length=100)
     grade = models.CharField(max_length=5)
     percentage = models.IntegerField()
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-percentage']
+        unique_together = ['user', 'subject']
 
     def __str__(self):
-        return f"{self.subject}: {self.grade} ({self.percentage}%)"
+        return f"{self.user.username}: {self.subject}: {self.grade} ({self.percentage}%)"
 
 
 class Exam(models.Model):
     """Model for upcoming exams"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exams')
     title = models.CharField(max_length=200)
     subject = models.CharField(max_length=100)
     exam_date = models.DateField()
@@ -170,7 +180,7 @@ class Exam(models.Model):
         ordering = ['exam_date']
 
     def __str__(self):
-        return f"{self.title} - {self.subject}"
+        return f"{self.user.username}: {self.title} - {self.subject}"
 
     @property
     def days_until(self):

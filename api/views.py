@@ -2,6 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -16,6 +18,20 @@ from .serializers import (
     AssignmentSerializer, WeeklyGoalSerializer, StudyActivitySerializer,
     SubjectPerformanceSerializer, ExamSerializer
 )
+
+
+# Helper to get user from token
+def get_user_from_request(request):
+    """Extract user from authorization header"""
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    if auth_header.startswith('Token '):
+        token_key = auth_header.split(' ')[1]
+        try:
+            token = Token.objects.get(key=token_key)
+            return token.user
+        except Token.DoesNotExist:
+            pass
+    return None
 
 
 # Authentication Views
@@ -73,13 +89,28 @@ def logout_view(request):
     return Response({'message': 'Logged out successfully'})
 
 
-class ScheduleItemViewSet(viewsets.ModelViewSet):
+# Base ViewSet with user filtering
+class UserFilteredViewSet(viewsets.ModelViewSet):
+    """Base ViewSet that filters by authenticated user"""
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter queryset to only show user's data"""
+        return super().get_queryset().filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        """Set user when creating new objects"""
+        serializer.save(user=self.request.user)
+
+
+class ScheduleItemViewSet(UserFilteredViewSet):
     """ViewSet for managing schedule items"""
     queryset = ScheduleItem.objects.all()
     serializer_class = ScheduleItemSerializer
     
     def get_queryset(self):
-        queryset = ScheduleItem.objects.all()
+        queryset = super().get_queryset()
         date = self.request.query_params.get('date', None)
         
         if date:
@@ -94,7 +125,7 @@ class ScheduleItemViewSet(viewsets.ModelViewSet):
     def today(self, request):
         """Get today's schedule"""
         today = timezone.now().date()
-        items = ScheduleItem.objects.filter(date=today)
+        items = self.get_queryset().filter(date=today)
         serializer = self.get_serializer(items, many=True)
         return Response(serializer.data)
     
@@ -108,7 +139,7 @@ class ScheduleItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class QuizViewSet(viewsets.ModelViewSet):
+class QuizViewSet(UserFilteredViewSet):
     """ViewSet for managing quizzes"""
     queryset = Quiz.objects.all()
     
@@ -121,7 +152,7 @@ class QuizViewSet(viewsets.ModelViewSet):
     def upcoming(self, request):
         """Get upcoming quizzes"""
         today = timezone.now().date()
-        quizzes = Quiz.objects.filter(quiz_date__gte=today)
+        quizzes = self.get_queryset().filter(quiz_date__gte=today)
         serializer = QuizListSerializer(quizzes, many=True)
         return Response(serializer.data)
     
@@ -141,8 +172,9 @@ class QuizViewSet(viewsets.ModelViewSet):
             if user_answer is not None and int(user_answer) == question.correct_answer:
                 score += 1
         
-        # Save attempt
+        # Save attempt with user
         attempt = QuizAttempt.objects.create(
+            user=request.user,
             quiz=quiz,
             score=score,
             total_questions=total,
@@ -157,9 +189,12 @@ class QuizQuestionViewSet(viewsets.ModelViewSet):
     """ViewSet for managing quiz questions"""
     queryset = QuizQuestion.objects.all()
     serializer_class = QuizQuestionSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = QuizQuestion.objects.all()
+        # Filter to only show questions from user's quizzes
+        queryset = QuizQuestion.objects.filter(quiz__user=self.request.user)
         quiz_id = self.request.query_params.get('quiz', None)
         
         if quiz_id:
@@ -168,7 +203,7 @@ class QuizQuestionViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class AssignmentViewSet(viewsets.ModelViewSet):
+class AssignmentViewSet(UserFilteredViewSet):
     """ViewSet for managing assignments"""
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
@@ -176,8 +211,9 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def stats(self, request):
         """Get assignment statistics"""
-        total = Assignment.objects.count()
-        completed = Assignment.objects.filter(status='completed').count()
+        user_assignments = self.get_queryset()
+        total = user_assignments.count()
+        completed = user_assignments.filter(status='completed').count()
         remaining = total - completed
         
         return Response({
@@ -196,13 +232,13 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class WeeklyGoalViewSet(viewsets.ModelViewSet):
+class WeeklyGoalViewSet(UserFilteredViewSet):
     """ViewSet for managing weekly goals"""
     queryset = WeeklyGoal.objects.all()
     serializer_class = WeeklyGoalSerializer
     
     def get_queryset(self):
-        queryset = WeeklyGoal.objects.all()
+        queryset = super().get_queryset()
         
         # Filter by current week by default
         current_week = self.request.query_params.get('current_week', 'true')
@@ -226,13 +262,13 @@ class WeeklyGoalViewSet(viewsets.ModelViewSet):
         return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class StudyActivityViewSet(viewsets.ModelViewSet):
+class StudyActivityViewSet(UserFilteredViewSet):
     """ViewSet for managing study activities"""
     queryset = StudyActivity.objects.all()
     serializer_class = StudyActivitySerializer
     
     def get_queryset(self):
-        queryset = StudyActivity.objects.all()
+        queryset = super().get_queryset()
         limit = self.request.query_params.get('limit', None)
         
         if limit:
@@ -243,18 +279,18 @@ class StudyActivityViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def recent(self, request):
         """Get recent activities (last 10)"""
-        activities = StudyActivity.objects.all()[:10]
+        activities = self.get_queryset()[:10]
         serializer = self.get_serializer(activities, many=True)
         return Response(serializer.data)
 
 
-class SubjectPerformanceViewSet(viewsets.ModelViewSet):
+class SubjectPerformanceViewSet(UserFilteredViewSet):
     """ViewSet for managing subject performance"""
     queryset = SubjectPerformance.objects.all()
     serializer_class = SubjectPerformanceSerializer
 
 
-class ExamViewSet(viewsets.ModelViewSet):
+class ExamViewSet(UserFilteredViewSet):
     """ViewSet for managing exams"""
     queryset = Exam.objects.all()
     serializer_class = ExamSerializer
@@ -263,7 +299,7 @@ class ExamViewSet(viewsets.ModelViewSet):
     def upcoming(self, request):
         """Get upcoming exams"""
         today = timezone.now().date()
-        exams = Exam.objects.filter(exam_date__gte=today)
+        exams = self.get_queryset().filter(exam_date__gte=today)
         serializer = self.get_serializer(exams, many=True)
         return Response(serializer.data)
 
@@ -271,17 +307,21 @@ class ExamViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 def dashboard_overview(request):
     """Get all dashboard data in a single request"""
+    user = get_user_from_request(request)
+    if not user:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    
     today = timezone.now().date()
     week_start = today - timedelta(days=today.weekday())
     
-    # Get all relevant data
-    schedule = ScheduleItem.objects.filter(date=today)
-    upcoming_quiz = Quiz.objects.filter(quiz_date__gte=today).first()
-    upcoming_exam = Exam.objects.filter(exam_date__gte=today).first()
-    assignments = Assignment.objects.all()
-    goals = WeeklyGoal.objects.filter(week_start=week_start)
-    activities = StudyActivity.objects.all()[:5]
-    performance = SubjectPerformance.objects.all()
+    # Get all relevant data for THIS USER only
+    schedule = ScheduleItem.objects.filter(user=user, date=today)
+    upcoming_quiz = Quiz.objects.filter(user=user, quiz_date__gte=today).first()
+    upcoming_exam = Exam.objects.filter(user=user, exam_date__gte=today).first()
+    assignments = Assignment.objects.filter(user=user)
+    goals = WeeklyGoal.objects.filter(user=user, week_start=week_start)
+    activities = StudyActivity.objects.filter(user=user)[:5]
+    performance = SubjectPerformance.objects.filter(user=user)
     
     # Calculate assignment stats
     total_assignments = assignments.count()
