@@ -73,8 +73,8 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
-    # Explicitly declare fields to control validation
-    link = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    # Explicitly declare link field to allow blank/null values
+    link = serializers.URLField(required=False, allow_blank=True, allow_null=True)
     
     class Meta:
         model = Assignment
@@ -95,7 +95,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
         internal['status'] = data.get('status', 'pending')
         internal['description'] = data.get('description', '')
         # Handle empty link - set to None instead of empty string for URLField
-        link = data.get('link', '')
+        link = data.get('link')
         internal['link'] = link if link else None
         return super().to_internal_value(internal)
 
