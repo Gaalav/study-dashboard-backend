@@ -91,7 +91,9 @@ class AssignmentSerializer(serializers.ModelSerializer):
         internal['due_date'] = data.get('dueDate') or data.get('due_date')
         internal['status'] = data.get('status', 'pending')
         internal['description'] = data.get('description', '')
-        internal['link'] = data.get('link', '')
+        # Handle empty link - set to None instead of empty string for URLField
+        link = data.get('link', '')
+        internal['link'] = link if link else None
         return super().to_internal_value(internal)
 
 
