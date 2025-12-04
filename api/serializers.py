@@ -75,7 +75,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Assignment
-        fields = ['id', 'title', 'subject', 'dueDate', 'status', 'description']
+        fields = ['id', 'title', 'subject', 'dueDate', 'status', 'description', 'link']
 
 
 class WeeklyGoalSerializer(serializers.ModelSerializer):
