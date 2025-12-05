@@ -353,3 +353,87 @@ def dashboard_overview(request):
         'recentActivities': StudyActivitySerializer(activities, many=True).data,
         'subjectPerformance': SubjectPerformanceSerializer(performance, many=True).data
     })
+
+
+# Cloudflare R2 PDF Upload
+@api_view(['POST'])
+def upload_pdf(request):
+    """Upload PDF to Cloudflare R2 storage"""
+    import boto3
+    from botocore.config import Config
+    import os
+    import uuid
+    
+    user = get_user_from_request(request)
+    if not user:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    if 'file' not in request.FILES:
+        return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    file = request.FILES['file']
+    
+    # Validate file type
+    if not file.name.lower().endswith('.pdf'):
+        return Response({'error': 'Only PDF files allowed'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate file size (50MB max)
+    if file.size > 50 * 1024 * 1024:
+        return Response({'error': 'File too large. Max 50MB'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get R2 credentials from environment
+    account_id = os.environ.get('R2_ACCOUNT_ID')
+    access_key = os.environ.get('R2_ACCESS_KEY_ID')
+    secret_key = os.environ.get('R2_SECRET_ACCESS_KEY')
+    bucket_name = os.environ.get('R2_BUCKET_NAME', 'study-dashboard-pdfs')
+    public_url = os.environ.get('R2_PUBLIC_URL', '')
+    
+    if not all([account_id, access_key, secret_key]):
+        return Response({'error': 'R2 storage not configured'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    try:
+        # Create S3 client for R2
+        s3 = boto3.client(
+            's3',
+            endpoint_url=f'https://{account_id}.r2.cloudflarestorage.com',
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            config=Config(signature_version='s3v4'),
+            region_name='auto'
+        )
+        
+        # Generate unique filename
+        subject_id = request.data.get('subject_id', 'general')
+        file_ext = file.name.split('.')[-1]
+        unique_name = f"{subject_id}/{uuid.uuid4().hex}.{file_ext}"
+        
+        # Upload file
+        s3.upload_fileobj(
+            file,
+            bucket_name,
+            unique_name,
+            ExtraArgs={
+                'ContentType': 'application/pdf',
+            }
+        )
+        
+        # Generate URL
+        if public_url:
+            file_url = f"{public_url}/{unique_name}"
+        else:
+            # Generate presigned URL (valid for 7 days)
+            file_url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': bucket_name, 'Key': unique_name},
+                ExpiresIn=604800  # 7 days
+            )
+        
+        return Response({
+            'success': True,
+            'url': file_url,
+            'filename': file.name
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

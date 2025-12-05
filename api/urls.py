@@ -19,4 +19,6 @@ urlpatterns = [
     path('auth/login/', views.login_view, name='auth-login'),
     path('auth/verify/', views.verify_token, name='auth-verify'),
     path('auth/logout/', views.logout_view, name='auth-logout'),
+    # File upload
+    path('upload/pdf/', views.upload_pdf, name='upload-pdf'),
 ]
